@@ -1,4 +1,5 @@
 from collections.abc import Iterable, Sequence
+from dataclasses import dataclass, field
 from typing import Protocol
 
 from tr.types import Bar, Contract, Result, Session, Trade
@@ -17,6 +18,36 @@ class Strategy(Protocol):
 
 class CostLike(Protocol):
     def on_fill(self, contracts: int, session: Session) -> float: ...
+
+
+@dataclass(slots=True)
+class _Leg:
+    """One round trip: flat (or a flip) until the position is fully closed.
+
+    Legs exist because a strategy that flips +1 to -1 never passes through zero.
+    Recording trades only at position == 0 loses every one of those round trips.
+    """
+
+    entry_ts: int = 0
+    entry_price: float = 0.0
+    contracts: int = 0
+    realized: float = 0.0
+    cost: float = field(default=0.0)
+
+    @property
+    def is_open(self) -> bool:
+        return self.contracts != 0
+
+    def to_trade(self, exit_ts: int, exit_price: float) -> Trade:
+        return Trade(
+            entry_ts=self.entry_ts,
+            exit_ts=exit_ts,
+            contracts=self.contracts,
+            entry_price=self.entry_price,
+            exit_price=exit_price,
+            gross=self.realized,
+            cost=self.cost,
+        )
 
 
 def _apply_fill(
@@ -57,45 +88,48 @@ def run(
     avg_price = 0.0
     realized = 0.0
     total_cost = 0.0
+    leg = _Leg()
 
     equity: list[float] = []
     timestamps: list[int] = []
     trades: list[Trade] = []
 
-    open_ts = 0
-    open_price = 0.0
-    open_contracts = 0
-    open_cost = 0.0
-
     for bar in bars:
         if pending != position:
             delta = pending - position
-            was_flat = position == 0
             fill_cost = costs.on_fill(delta, bar.session)
             total_cost += fill_cost
-            open_cost += fill_cost
+            per_contract = fill_cost / abs(delta)
 
-            if was_flat:
-                open_ts, open_price, open_contracts = bar.ts, bar.open, delta
+            reducing = position != 0 and delta * position < 0
+            closed_qty = min(abs(delta), abs(position)) if reducing else 0
+            opening_qty = abs(delta) - closed_qty
 
-            position, avg_price, pnl = _apply_fill(
+            new_position, avg_price, pnl = _apply_fill(
                 position, avg_price, delta, bar.open, multiplier
             )
             realized += pnl
+            leg.realized += pnl
+            leg.cost += closed_qty * per_contract
 
-            if position == 0 and open_contracts != 0:
-                trades.append(
-                    Trade(
-                        entry_ts=open_ts,
-                        exit_ts=bar.ts,
-                        contracts=open_contracts,
-                        entry_price=open_price,
-                        exit_price=bar.open,
-                        gross=pnl,
-                        cost=open_cost,
+            if reducing and (new_position == 0 or opening_qty > 0):
+                trades.append(leg.to_trade(bar.ts, bar.open))
+                leg = _Leg()
+
+            if opening_qty > 0:
+                if leg.is_open:
+                    leg.contracts = new_position
+                    leg.entry_price = avg_price
+                    leg.cost += opening_qty * per_contract
+                else:
+                    leg = _Leg(
+                        entry_ts=bar.ts,
+                        entry_price=bar.open,
+                        contracts=new_position,
+                        cost=opening_qty * per_contract,
                     )
-                )
-                open_contracts, open_cost = 0, 0.0
+
+            position = new_position
 
         unrealized = position * (bar.close - avg_price) * multiplier
         equity.append(starting_equity + realized + unrealized - total_cost)
@@ -107,25 +141,14 @@ def run(
         last = bars[-1]
         fill_cost = costs.on_fill(-position, last.session)
         total_cost += fill_cost
-        open_cost += fill_cost
         _, _, pnl = _apply_fill(position, avg_price, -position, last.close, multiplier)
         realized += pnl
-        trades.append(
-            Trade(
-                entry_ts=open_ts,
-                exit_ts=last.ts,
-                contracts=open_contracts,
-                entry_price=open_price,
-                exit_price=last.close,
-                gross=pnl,
-                cost=open_cost,
-            )
-        )
+        leg.realized += pnl
+        leg.cost += fill_cost
+        trades.append(leg.to_trade(last.ts, last.close))
         equity[-1] = starting_equity + realized - total_cost
 
-    return Result(
-        equity=equity, timestamps=timestamps, trades=trades, total_cost=total_cost
-    )
+    return Result(equity=equity, timestamps=timestamps, trades=trades, total_cost=total_cost)
 
 
 def bars_from_prices(
