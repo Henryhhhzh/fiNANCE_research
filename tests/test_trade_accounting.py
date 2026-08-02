@@ -7,7 +7,7 @@ when position hits zero silently loses every round trip, which shows up as
 
 from tr.engine.backtest import bars_from_prices, run
 from tr.engine.costs import ZeroCost
-from tr.types import MES, Bar
+from tr.types import MES, Bar, Result
 
 FREE = ZeroCost()
 
@@ -24,7 +24,7 @@ class Scripted:
         return self._targets[self._i] if self._i < len(self._targets) else 0
 
 
-def _run(prices: list[float], targets: list[int]):
+def _run(prices: list[float], targets: list[int]) -> Result:
     return run(bars_from_prices(prices), Scripted(targets), FREE, MES)
 
 

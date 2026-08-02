@@ -96,8 +96,8 @@ def expected_max_sharpe(n_trials: int, sr_variance: float) -> float:
     This is the bar a real edge has to clear (Bailey & Lopez de Prado)."""
     if n_trials < 2:
         return 0.0
-    a = stats.norm.ppf(1.0 - 1.0 / n_trials)
-    b = stats.norm.ppf(1.0 - 1.0 / (n_trials * math.e))
+    a = float(stats.norm.ppf(1.0 - 1.0 / n_trials))
+    b = float(stats.norm.ppf(1.0 - 1.0 / (n_trials * math.e)))
     return math.sqrt(sr_variance) * ((1 - EULER_MASCHERONI) * a + EULER_MASCHERONI * b)
 
 

@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import polars as pl
 import pytest
@@ -97,7 +98,7 @@ def test_overnight_bars_are_tagged_eth() -> None:
     assert tag_sessions(overnight)["session"][0] == "ETH"
 
 
-def test_manifest_checksums_every_file(tmp_path) -> None:
+def test_manifest_checksums_every_file(tmp_path: Path) -> None:
     (tmp_path / "a.parquet").write_bytes(b"alpha")
     (tmp_path / "b.parquet").write_bytes(b"beta")
     manifest = tmp_path / "MANIFEST.txt"
@@ -105,7 +106,7 @@ def test_manifest_checksums_every_file(tmp_path) -> None:
     assert sha256_file(tmp_path / "a.parquet") in manifest.read_text()
 
 
-def test_manifest_changes_when_bytes_change(tmp_path) -> None:
+def test_manifest_changes_when_bytes_change(tmp_path: Path) -> None:
     target = tmp_path / "a.parquet"
     target.write_bytes(b"alpha")
     manifest = tmp_path / "MANIFEST.txt"

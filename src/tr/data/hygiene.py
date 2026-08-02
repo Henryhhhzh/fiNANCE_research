@@ -26,10 +26,13 @@ def validate_schema(df: pl.DataFrame) -> None:
     missing = [c for c in REQUIRED_COLUMNS if c not in df.columns]
     if missing:
         raise HygieneError(f"missing required columns: {missing}")
-    if df["ts"].dtype.time_zone is None:
+    dtype = df["ts"].dtype
+    if not isinstance(dtype, pl.Datetime):
+        raise HygieneError(f"ts must be a Datetime column, got {dtype}")
+    if dtype.time_zone is None:
         raise HygieneError("ts must be timezone-aware; naive timestamps hide DST bugs")
-    if df["ts"].dtype.time_zone != "UTC":
-        raise HygieneError(f"ts must be stored in UTC, got {df['ts'].dtype.time_zone}")
+    if dtype.time_zone != "UTC":
+        raise HygieneError(f"ts must be stored in UTC, got {dtype.time_zone}")
 
 
 def assert_timestamps(df: pl.DataFrame) -> None:

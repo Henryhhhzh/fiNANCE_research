@@ -7,7 +7,7 @@ survive to month six.
 
 from tr.engine.backtest import Strategy, bars_from_prices, run
 from tr.engine.costs import CostModel, ZeroCost
-from tr.types import MES, Bar, Session
+from tr.types import MES, Bar, Result, Session
 
 FREE = ZeroCost()
 COST = CostModel(contract=MES)
@@ -23,7 +23,7 @@ class AlwaysFlat:
         return 0
 
 
-def _run(prices: list[float], strategy: Strategy, costs: object = FREE):
+def _run(prices: list[float], strategy: Strategy, costs: object = FREE) -> Result:
     return run(bars_from_prices(prices), strategy, costs, MES)  # type: ignore[arg-type]
 
 
