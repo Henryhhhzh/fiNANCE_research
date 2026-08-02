@@ -1,0 +1,18 @@
+# Data is large and licensed — never committed.
+# The checksum manifest IS committed so results stay reproducible without shipping bytes.
+data/*
+!data/MANIFEST.txt
+!data/SEALED/
+data/SEALED/*
+!data/SEALED/README.md
+
+reports/*
+!reports/.gitkeep
+
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.DS_Store
