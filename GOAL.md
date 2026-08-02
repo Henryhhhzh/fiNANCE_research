@@ -235,9 +235,16 @@ invalidates everything downstream. The rules:
 
 | Split | Dates | Rule |
 |---|---|---|
-| **Development** | 2019-01-01 → 2023-12-31 | I may look at this as much as I like |
-| **Validation** | 2024-01-01 → 2025-06-30 | Walk-forward only, ≤ 5 total looks, each logged |
+| **Development** | 2010-01-01 → 2021-12-31 | I may look at this as much as I like |
+| **Validation** | 2022-01-01 → 2025-06-30 | Walk-forward only, ≤ 5 total looks, each logged |
 | **Sealed holdout** | 2025-07-01 → 2026-07-31 | **Touched exactly once, ever, in Phase 4** |
+
+These dates were corrected on 2026-08-02, before any test was run, because the original split (dev
+starting 2019) was inherited from the earlier crypto plan and left **nine of the S1 stress regimes —
+Flash Crash, taper tantrum, Aug 2015, Volmageddon, Q4 2018 — outside every split.** Buying 2010–2018
+data and never training on it, while claiming to stress-test against those events, would have been
+incoherent. Changing this after Phase 3 begins would be goalpost-moving; changing it now costs
+nothing.
 
 The sealed holdout is stored in a separate directory, `data/SEALED/`, with a `README` that says what
 it's for. If I test on it twice, the second test is worthless and I must find new data or wait for
